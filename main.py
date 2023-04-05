@@ -131,12 +131,18 @@ def compress( inputFile, outputFile ):
   # reconstructed.
 
   outputFile.write( headerText + b'\n' )
-  outputFile.write( bytes( '%d %d %d\n' % (img.shape[0], img.shape[1], img.shape[2]), encoding='utf8' ) )
+  if len(img.shape) > 2:
+    outputFile.write( bytes( '%d %d %d\n' % (img.shape[0], img.shape[1], img.shape[2]), encoding='utf8' ) )
+  else:
+      outputFile.write(bytes('%d %d\n' % (img.shape[0], img.shape[1]), encoding='utf8'))
   outputFile.write( outputBytes )
 
   # Print information about the compression
-  
-  inSize  = img.shape[0] * img.shape[1] * img.shape[2]
+
+  if len(img.shape) > 2:
+    inSize  = img.shape[0] * img.shape[1] * img.shape[2]
+  else:
+    inSize  = img.shape[0] * img.shape[1]
   outSize = len(outputBytes)
 
   sys.stderr.write( 'Input size:         %d bytes\n' % inSize )
@@ -190,8 +196,7 @@ def uncompress( inputFile, outputFile ):
   for i in range(2, len(inputBytes), 2):
       twoBytes = inputBytes[i:i+2]
       key = struct.unpack( '>H', twoBytes )[0]
-      T = S
-      
+
       if key < entries:
           T = dict[key]
           dict[entries] = S + [ T[0] ]
