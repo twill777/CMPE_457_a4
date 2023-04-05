@@ -1,0 +1,91 @@
+CISC/CMPE 457 - Assignment 4
+
+Due Friday, April 7 at noon
+
+You are to implement LZW image compression with predictive encoding.
+Your implementation is to be efficient.  There are lots of Python LZW
+examples on the net.  Do not copy those.  Write your own code.
+
+1. Try the sample code.  Create a compressed image, cortex.cmp, as follows:
+
+     python3 main.py c images/cortex.pnm cortex.cmp
+
+   Uncompress the same file as follows:
+
+     python3 main.py u cortex.cmp uncompressed.pnm
+
+   Then images/cortex.pnm and uncompressed.pnm should be exactly the
+   same file.  Note that the skeleton code in main.py does not
+   actually compress anything; it just copies the file.
+
+   You can view a pnm file with, for example:
+
+     python3 netpbm.py images/cortex.pnm
+
+   If viewing with netpbm.py, you'll need to install the Python
+   'matplotlib' library.  But you might have another image viewer that
+   works with PNM images.
+
+2. Implement LZW compression with predictive encoding in the
+   compress() function.  You should predictively encode each channel
+   of a pixel separately, using the corresponding channel from the
+   previous pixel.  Use LZW to compress the *difference* between the
+   true channel value and the predicted channel value.  The
+   differences can be positive or negative.  Note that the image might
+   have any number of channels per pixel.  Do not allow your LZW
+   dictionary to exceed 65536 entries; this permits you to encode each
+   index in two bytes.
+
+   The code will be marked for efficiency and compression ratio.  For
+   compression, you may use a Python dictionary for the LZW
+   dictionary.  THE DICTIONARY KEYS MUST NOT BE LISTS, as this is
+   enormously inefficient.  
+
+3. Implement LZW decompression with predictive decoding in the
+   uncompress() function.  A correct implementation will return
+   exactly the same file if you first compress the file, then
+   uncompress it.  For decompression, do not use a Python dictionary
+   as that is quite inefficient for the purpose.
+
+4. In a 'README.txt' file, create a table of compression results with
+   one line for each of the four PNM file in the 'images' directory,
+   and one column for each of
+
+      filename
+      compression time
+      decompression time
+      compression ratio
+      compression ratio of zipped image
+
+   where you determine the last column using the zipped images that
+   are provided.
+
+   Also, at the TOP of the 'README.txt' file, provide your name(s) and
+   netID(s), as well as any comments you may have to the TA.
+
+   Note, just for your own interest, the compressed sizes of
+   cortex.png (lossless) and cortex.jpg (lossy).
+
+
+To hand in:
+
+  Create a directory named 'a4' that contains:
+
+     - main.py
+     - README.txt
+
+  Do not include any other files, including hidden files or images.
+
+  Zip the directory and submit it on OnQ.
+
+  Follow these instructions exactly or marks may be deducted.
+
+
+
+Marking
+
+    /3 Testing: Correct compression/uncompression of noise.pnm
+    /3 Testing: Correct compression/uncompression of other three PNM files
+    /8 Code: Compression algorithm with predictive encoding
+    /5 Code: Decompression algorithm with predictive encoding
+    /1 Table of values provided in README.txt
