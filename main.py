@@ -63,10 +63,12 @@ def compress( inputFile, outputFile ):
 
   stream = [] # hold differences for predictive encoding
 
+  # Check if single- or multi-channel
   multi = False
   if len(img.shape) > 2:
       multi = True
 
+  # Create stream of differentiated bits using sub encoding
   if multi:
       for y in range(img.shape[0]):
         for x in range(img.shape[1]):
@@ -78,6 +80,7 @@ def compress( inputFile, outputFile ):
             stream.append( out )
 
   else:
+      # Create stream of differentiated bits using sub encoding
       for y in range(img.shape[0]):
         for x in range(img.shape[1]):
             # f'(x,y)=f(x,y)−(aw*f(x−1,y−1)+bw*f(x,y−1)+cw*f(x−1,y))
@@ -86,39 +89,51 @@ def compress( inputFile, outputFile ):
                 out -= img[y,x-1]
             stream.append( out )
 
-  # LZW
-  entries = 0
+  #  -- LZW --
+  entries = 0 # Number of dictionary entries
   dict = {}
   S = ""
 
-  # map initial dictionary
+  # map initial dictionary with all possible single pixel values
   for i in range(-255,256):
       dict[str(i)] = entries
       entries += 1
   
+  # For each byte in the stream
   for b in stream:
+      # Set a temporary combination equal to s + b
       t = S
+
+      # Since the numbers are stored in strings, they are delimited with an 'x' character
       if S != "":
         t += 'x';
 
+      # Add b to the temp combination
       t += str(int(b))
 
+      # If its alredy in the dictionary, set S and move on
       if t in dict:
           S = t
+      
       else:
-          if entries < 65536:
-                dict[t] = entries
-                entries += 1
-          if S != "":
-              out = dict[ S ]
-              out = struct.pack( '>H', out )
-              outputBytes.append( out[0] )
-              outputBytes.append( out[1] )
-              S = str(int(b))
+        # Only add the combination to the dictionary if space allows
+        if entries < 65536:
+            # They key is the combination t, and the value is the code for that combination (which is an integer index)
+            dict[t] = entries
+            entries += 1
 
+        # Convert the value (combination's integer index) to a two byte array and add it to the output stream
+        out = struct.pack( '>H', dict[ S ] )
+        outputBytes.append( out[0] )
+        outputBytes.append( out[1] )
+
+        # Set s and the last new byte
+        S = str(int(b))
+  
+  # After all data is streamed out, output the code for the S value that is currently being built
   out = struct.pack( '>H', dict[ S ] )
-  outputBytes.append( out[1] )
   outputBytes.append( out[0] )
+  outputBytes.append( out[1] )
 
   # ---------------- [END OF YOUR CODE] ----------------
 
@@ -176,52 +191,64 @@ def uncompress( inputFile, outputFile ):
   #
   # REPLACE THIS WITH YOUR OWN CODE TO CONVERT THE 'inputBytes' ARRAY INTO AN IMAGE IN 'img'.
 
+  # Create empty image
   img = np.empty( [rows,columns,numChannels], dtype=np.uint8 )
 
-  entries = 0
-  dict = {}
+
+  #  -- LZW --
+  entries = 0 # Number of dictionary entries
+  dict = [] # Actually a list since keys are just integer indices
   S = []
 
-  stream = []
+  stream = [] # Stream of decoded pixels
 
   # map initial dictionary
   for i in range(-255,256):
-      dict[entries] = [ i ]
+      dict.append([ i ])
       entries += 1
 
+  # Get first two bytes for first token stream
   twoBytes = inputBytes[:2]
+  # Convert to index
   key = struct.unpack( '>H', twoBytes )[0]
+
+  # Find first S and add to the stream
   S = dict[key]
   stream += S
+
+  # Loop through the remainder of the inputBytes
   for i in range(2, len(inputBytes), 2):
+      # Grab two bytes for the index and calculate it
       twoBytes = inputBytes[i:i+2]
       key = struct.unpack( '>H', twoBytes )[0]
 
+      # If the key exists at a current index in the list, grab the relevant token stream and add S + the first token to the dictionary
       if key < entries:
           T = dict[key]
-          dict[entries] = S + [ T[0] ]
-      else:
+          dict.append(S + [ T[0] ])
+      else: # Otherwise, calculate T and add it to the dictionary
         T = S + [ S[0] ]
-        dict[entries] = T
-      
+        dict.append(T)
+
+      # increment the number of entries, add T to the stream, and reset S to T
       entries += 1
       stream += T
       S = T
 
+  # Iterate over every pixel in the image
   i = 0
   for y in range(rows):
     for x in range(columns):
       for c in range(numChannels):
-          if i >= len(stream):
-            img[y,x,c] = 255
-            print(i-len(stream))
-          else:    
+        # If it was not an edge pixel, use the prior pixel to calculate the actual value
+        if x > 0:
+            # NOTE: There is a faster way to arrange this, but it was giving a uint overflow warning, and so this method was chosen
+            img[y,x,c] = np.uint8(stream[i] + img[y,x-1,c])
+        else:
+            # Set the value to the streamed in value
             img[y,x,c] = stream[i]
 
-            if x > 0:
-              img[y,x,c] += img[y,x-1,c]
-
-          i += 1
+        i += 1
 
   # ---------------- [END OF YOUR CODE] ----------------
 
